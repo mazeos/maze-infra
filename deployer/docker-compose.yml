@@ -13,6 +13,8 @@ services:
       - /opt:/opt
       # llaves SSH del host (solo lectura) → para que git fetch funcione igual que el root
       - /root/.ssh:/root/.ssh:ro
+      # gitconfig del host (token de lectura para repos privados, vía insteadOf)
+      - /root/.gitconfig:/root/.gitconfig:ro
     networks:
       - traefik-public
     labels:
