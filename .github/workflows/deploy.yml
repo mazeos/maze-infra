@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: "docker-compose.yml"
+      force_recreate:
+        description: "Recrear todos los contenedores (poner false en apps con DB para no recrear postgres)"
+        required: false
+        type: boolean
+        default: true
     secrets:
       DEPLOY_TOKEN:
         required: true
@@ -36,7 +41,7 @@ jobs:
             -X POST https://deploy.mazefunnels.io/deploy \
             -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
             -H "Content-Type: application/json" \
-            --data "{\"app_dir\":\"${{ inputs.app_dir }}\",\"branch\":\"${{ inputs.branch }}\",\"compose_file\":\"${{ inputs.compose_file }}\"}")
+            --data "{\"app_dir\":\"${{ inputs.app_dir }}\",\"branch\":\"${{ inputs.branch }}\",\"compose_file\":\"${{ inputs.compose_file }}\",\"force_recreate\":${{ inputs.force_recreate }}}")
           echo "Respuesta HTTP: $code"
           echo "----- salida del deploy -----"
           cat /tmp/resp

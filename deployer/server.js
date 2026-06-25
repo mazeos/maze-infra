@@ -22,15 +22,17 @@ function valida({ app_dir, branch, compose_file }) {
   return null;
 }
 
-function deploy({ app_dir, branch, compose_file }, cb) {
+function deploy({ app_dir, branch, compose_file, force_recreate }, cb) {
   const cf = compose_file || "docker-compose.yml";
+  // force_recreate=false → no recrea contenedores sin cambios (ej: postgres de una app con DB)
+  const fr = force_recreate === false ? "" : "--force-recreate";
   const script = [
     "set -e",
     'export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"',
     `cd ${app_dir}`,
     `git fetch origin ${branch}`,
     `git reset --hard origin/${branch}`,
-    `docker compose -f ${cf} up -d --build --force-recreate`,
+    `docker compose -f ${cf} up -d --build ${fr}`,
   ].join("; ");
   execFile("bash", ["-lc", script], { timeout: 600000 }, (err, stdout, stderr) => {
     cb(err, (stdout || "") + (stderr || ""));
