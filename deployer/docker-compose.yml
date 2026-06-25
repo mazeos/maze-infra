@@ -1,0 +1,27 @@
+services:
+  maze-deployer:
+    build: .
+    container_name: maze-deployer
+    restart: unless-stopped
+    environment:
+      - DEPLOY_TOKEN=${DEPLOY_TOKEN}
+    volumes:
+      # socket de docker del host → para ejecutar docker compose de cualquier app
+      - /var/run/docker.sock:/var/run/docker.sock
+      # carpetas de las apps (mismas rutas que el host para que compose funcione)
+      - /docker:/docker
+      - /opt:/opt
+      # llaves SSH del host (solo lectura) → para que git fetch funcione igual que el root
+      - /root/.ssh:/root/.ssh:ro
+    networks:
+      - traefik-public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.maze-deployer.rule=Host(`deploy.mazefunnels.io`)
+      - traefik.http.routers.maze-deployer.entrypoints=websecure
+      - traefik.http.routers.maze-deployer.tls.certresolver=letsencrypt
+      - traefik.http.services.maze-deployer.loadbalancer.server.port=3000
+
+networks:
+  traefik-public:
+    external: true
