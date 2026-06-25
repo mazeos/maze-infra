@@ -1,8 +1,9 @@
 name: Deploy reutilizable al VPS
 
 # Robot de deploy compartido por TODAS las apps de Maze Funnels.
-# Se escribe una sola vez aquí. Cada app lo invoca con un caller corto.
-# Hace: entra al VPS por SSH, trae la rama exacta desde GitHub y recrea el contenedor.
+# Avisa al recepcionista del VPS (deploy.mazefunnels.io) por HTTPS.
+# El VPS hace git fetch + reset + docker compose. No usa SSH entrante
+# (Hostinger bloquea las IPs de GitHub en SSH; la puerta web sí pasa).
 
 on:
   workflow_call:
@@ -21,27 +22,23 @@ on:
         type: string
         default: "docker-compose.yml"
     secrets:
-      VPS_HOST:
-        required: true
-      VPS_USER:
-        required: true
-      VPS_SSH_KEY:
+      DEPLOY_TOKEN:
         required: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy por SSH al VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ inputs.app_dir }}
-            git fetch origin ${{ inputs.branch }}
-            git reset --hard origin/${{ inputs.branch }}
-            docker compose -f ${{ inputs.compose_file }} up -d --build --force-recreate
-            echo "Deploy OK: ${{ inputs.app_dir }} @ ${{ inputs.branch }}"
+      - name: Avisar al recepcionista del VPS
+        run: |
+          set -e
+          code=$(curl -s -o /tmp/resp -w "%{http_code}" --max-time 600 \
+            -X POST https://deploy.mazefunnels.io/deploy \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"app_dir\":\"${{ inputs.app_dir }}\",\"branch\":\"${{ inputs.branch }}\",\"compose_file\":\"${{ inputs.compose_file }}\"}")
+          echo "Respuesta HTTP: $code"
+          echo "----- salida del deploy -----"
+          cat /tmp/resp
+          echo "-----------------------------"
+          test "$code" = "200"
