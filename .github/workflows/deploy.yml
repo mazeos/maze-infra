@@ -1,0 +1,47 @@
+name: Deploy reutilizable al VPS
+
+# Robot de deploy compartido por TODAS las apps de Maze Funnels.
+# Se escribe una sola vez aquí. Cada app lo invoca con un caller corto.
+# Hace: entra al VPS por SSH, trae la rama exacta desde GitHub y recrea el contenedor.
+
+on:
+  workflow_call:
+    inputs:
+      app_dir:
+        description: "Carpeta de la app en el VPS (ej: /docker/maze-growth-simulator)"
+        required: true
+        type: string
+      branch:
+        description: "Rama a desplegar (ej: main o develop)"
+        required: true
+        type: string
+      compose_file:
+        description: "Archivo compose a usar"
+        required: false
+        type: string
+        default: "docker-compose.yml"
+    secrets:
+      VPS_HOST:
+        required: true
+      VPS_USER:
+        required: true
+      VPS_SSH_KEY:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy por SSH al VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ inputs.app_dir }}
+            git fetch origin ${{ inputs.branch }}
+            git reset --hard origin/${{ inputs.branch }}
+            docker compose -f ${{ inputs.compose_file }} up -d --build --force-recreate
+            echo "Deploy OK: ${{ inputs.app_dir }} @ ${{ inputs.branch }}"
